@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Playlist Merger</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+        <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">YouTube Playlist Merger</h1>
+        <form id="mergeForm" class="space-y-4">
+            <div>
+                <label for="playlistUrl" class="block text-sm font-medium text-gray-700">Playlist URL</label>
+                <input type="text" id="playlistUrl" name="playlistUrl" required
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+            </div>
+            <div>
+                <label for="format" class="block text-sm font-medium text-gray-700">Format</label>
+                <select id="format" name="format" required
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                    <option value="mp3">MP3</option>
+                    <option value="mp4">MP4</option>
+                </select>
+            </div>
+            <div id="resolutionContainer" class="hidden">
+                <label for="resolution" class="block text-sm font-medium text-gray-700">Resolution</label>
+                <select id="resolution" name="resolution"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                    <option value="360">360p</option>
+                    <option value="480">480p</option>
+                    <option value="720">720p</option>
+                    <option value="1080">1080p</option>
+                </select>
+            </div>
+            <button type="submit" id="submitButton"
+                class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex items-center justify-center">
+                <span id="buttonText">Merge Playlist</span>
+                <svg id="telegramLogo" class="w-5 h-5 ml-2 hidden" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/>
+                </svg>
+            </button>
+        </form>
+        <div id="result" class="mt-4 text-center text-sm text-gray-600"></div>
+        <div id="downloadContainer" class="hidden mt-4">
+            <a id="downloadLink" href="#" class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 flex items-center justify-center">
+                <span id="downloadText">Download</span>
+                <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+            </a>
+        </div>
+        <div id="loading" class="hidden mt-4 text-center">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-600"></div>
+        </div>
+    </div>
+
+    <script>
+        const formatSelect = document.getElementById('format');
+        const resolutionContainer = document.getElementById('resolutionContainer');
+        const submitButton = document.getElementById('submitButton');
+        const buttonText = document.getElementById('buttonText');
+        const telegramLogo = document.getElementById('telegramLogo');
+        const downloadContainer = document.getElementById('downloadContainer');
+        const downloadLink = document.getElementById('downloadLink');
+        const downloadText = document.getElementById('downloadText');
+
+        function updateButtonAppearance() {
+            if (formatSelect.value === 'mp3') {
+                buttonText.classList.add('hidden');
+                telegramLogo.classList.remove('hidden');
+                submitButton.classList.remove('bg-indigo-600', 'hover:bg-indigo-700');
+                submitButton.classList.add('bg-blue-500', 'hover:bg-blue-600');
+            } else {
+                buttonText.classList.remove('hidden');
+                telegramLogo.classList.add('hidden');
+                submitButton.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                submitButton.classList.add('bg-indigo-600', 'hover:bg-indigo-700');
+            }
+        }
+
+        formatSelect.addEventListener('change', () => {
+            if (formatSelect.value === 'mp4') {
+                resolutionContainer.classList.remove('hidden');
+            } else {
+                resolutionContainer.classList.add('hidden');
+            }
+            updateButtonAppearance();
+        });
+
+        // Initial button appearance setup
+        updateButtonAppearance();
+
+        document.getElementById('mergeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const playlistUrl = document.getElementById('playlistUrl').value;
+            const format = formatSelect.value;
+            const resolution = document.getElementById('resolution').value;
+            const resultDiv = document.getElementById('result');
+            const loadingDiv = document.getElementById('loading');
+
+            resultDiv.textContent = '';
+            loadingDiv.classList.remove('hidden');
+            downloadContainer.classList.add('hidden');
+
+            try {
+                const response = await fetch('/merge', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ playlistUrl, format, resolution }),
+                });
+
+                const data = await response.json();
+                if (data.downloadUrl) {
+                    downloadLink.href = data.downloadUrl;
+                    downloadText.textContent = `Download (${data.fileSize} MB)`;
+                    downloadContainer.classList.remove('hidden');
+                    resultDiv.textContent = 'File ready for download';
+                } else {
+                    resultDiv.textContent = data.message || data.error;
+                }
+            } catch (error) {
+                resultDiv.textContent = 'An error occurred. Please try again.';
+            } finally {
+                loadingDiv.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
